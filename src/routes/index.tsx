@@ -245,12 +245,40 @@ function Builder() {
       <style>{`
         @media print {
           @page { size: A4; margin: 0; }
-          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+          html, body {
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
           .no-print { display: none !important; }
-          #print-root { padding: 0 !important; }
-          #print-root > div { gap: 0 !important; width: ${PAGE_WIDTH_PX}px !important; }
-          #print-root > div > div { transform: none !important; width: ${PAGE_WIDTH_PX}px !important; }
-          #print-root > div > div > div { gap: 0 !important; }
+          /* Hide everything, then reveal only the pages */
+          body * { visibility: hidden !important; }
+          #print-root, #print-root * { visibility: visible !important; }
+          /* Neutralize layout wrappers (flex containers, scroll areas, zoom transforms) */
+          #print-root {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: ${PAGE_WIDTH_PX}px !important;
+            height: auto !important;
+            overflow: visible !important;
+            display: block !important;
+          }
+          #print-root > div,
+          #print-root > div > div,
+          #print-root > div > div > div {
+            transform: none !important;
+            width: ${PAGE_WIDTH_PX}px !important;
+            gap: 0 !important;
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
           .resume-page {
             width: ${PAGE_WIDTH_PX}px !important;
             height: ${PAGE_HEIGHT_PX}px !important;
@@ -258,6 +286,8 @@ function Builder() {
             page-break-after: always;
             break-after: page;
             border: 0 !important;
+            overflow: hidden !important;
+            margin: 0 !important;
           }
           .resume-page:last-child { page-break-after: auto; break-after: auto; }
         }
