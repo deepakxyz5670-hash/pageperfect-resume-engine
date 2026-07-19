@@ -1,12 +1,10 @@
-// Engine: measure → paginate → render pages.
+// Engine: measure -> paginate -> render pages.
 //
-// This is the whole document pipeline. Renderer never measures; paginator
-// never renders (it produces a Page Model consumed by the renderer).
+// Renderer never measures; paginator never renders. The paginator emits a
+// Page Model as a list of placed blocks with an explicit `topGap` in px,
+// so what fits on a page mathematically is exactly what draws on the page.
 //
-// A4 at 96dpi ≈ 794 × 1123 px. We author in CSS mm/px so the same DOM prints
-// unchanged. The measurement pass renders each block into a hidden container
-// of the exact target width and reads getBoundingClientRect().height —
-// guaranteeing "what you preview is what prints".
+// A4 at 96dpi = 794 x 1123 px. Same DOM is used for preview and print.
 
 import {
   useEffect,
@@ -24,19 +22,13 @@ import {
   themeCssVars,
   type Block,
   type BlockGroup,
-  type EntryData,
 } from "./model";
 import type { Resume } from "./schema";
 import type { LayoutKind, Spacing, Template, Theme } from "./templates";
 
-// ---- Page dimensions ------------------------------------------------------
-
-// mm at 96dpi -> px. Fixed so preview and print resolve to the same layout.
 const MM_TO_PX = 96 / 25.4;
 export const PAGE_WIDTH_PX = Math.round(210 * MM_TO_PX); // ~794
 export const PAGE_HEIGHT_PX = Math.round(297 * MM_TO_PX); // ~1123
-
-// ---- Region model --------------------------------------------------------
 
 type RegionKey = "header" | "footer" | "main" | "sidebar" | "second";
 type Variant = "main" | "sidebar" | "header";
@@ -47,16 +39,16 @@ type Region = {
   x: number;
   y: number;
   width: number;
-  height: number; // available height for content
+  height: number;
   groups: BlockGroup[];
-  padding: number; // inner padding (sidebars/header get extra)
+  padding: number;
   backgroundColor?: string;
-  fullPageHeight?: boolean; // for sidebars that span full page height
+  fullPageHeight?: boolean;
 };
 
 type PlacedBlock = {
   block: Block;
-  topGap: number;
+  topGap: number; // px before this block on the page (0 for first)
   height: number;
 };
 
@@ -72,8 +64,6 @@ type PageModel = {
 
 // ---- Layout resolution ---------------------------------------------------
 
-// Compute regions for a template. Body regions get an available height that is
-// (pageHeight - top - bottom margins - headerHeight - footerHeight).
 export function resolveRegions(resume: Resume, template: Template) {
   const s = template.spacing;
   const t = template.theme;
@@ -92,16 +82,13 @@ export function resolveRegions(resume: Resume, template: Template) {
   const footerGroups = buildGroupsFor(resume, template.footerSections, "main");
 
   const regions: Region[] = [];
+  const layout: LayoutKind = template.layout;
 
-  const usesFullPageSidebar =
-    template.layout === "leftSidebar" || template.layout === "rightSidebar";
-  const sidebarW = s.sidebarWidth;
-  const gap = s.columnGap;
-
-  // ---- Sidebar layouts (sidebar spans full page height) ------------------
-  if (usesFullPageSidebar) {
+  if (layout === "leftSidebar" || layout === "rightSidebar") {
+    const isLeft = layout === "leftSidebar";
+    const sidebarW = s.sidebarWidth;
     const sidebarPad = s.sidebarPadding;
-    const isLeft = template.layout === "leftSidebar";
+    const gap = s.columnGap;
     const sideX = isLeft ? 0 : pageW - sidebarW;
     const mainX = isLeft ? sidebarW + gap : s.pageMarginLeft;
     const mainW = pageW - sidebarW - gap - s.pageMarginLeft - s.pageMarginRight;
@@ -120,37 +107,27 @@ export function resolveRegions(resume: Resume, template: Template) {
         fullPageHeight: true,
       });
     }
-    if (mainGroups.length || headerGroups.length) {
-      // Header, if any, prepends into the main column top region.
-      regions.push({
-        key: "main",
-        variant: "main",
-        x: mainX,
-        y: contentY,
-        width: mainW,
-        height: contentH,
-        groups: [...headerGroups, ...mainGroups],
-        padding: 0,
-      });
-    }
-    return { regions, template };
+    regions.push({
+      key: "main",
+      variant: "main",
+      x: mainX,
+      y: contentY,
+      width: mainW,
+      height: contentH,
+      groups: [...headerGroups, ...mainGroups],
+      padding: 0,
+    });
+    return { regions };
   }
 
-  // ---- Header / footer + body variants ----------------------------------
-  let bodyY = contentY;
-  let bodyH = contentH;
-
-  if (headerGroups.length && template.layout !== "single") {
-    // Header is measured; we reserve provisional height using headerHeight if
-    // >0, else measure at paginate time. For simplicity we use a fixed slot.
-    // (Measurement of header height happens in the measurement pass.)
+  if (headerGroups.length && layout !== "single") {
     regions.push({
       key: "header",
       variant: "header",
       x: contentX,
       y: contentY,
       width: contentW,
-      height: Number.POSITIVE_INFINITY, // measured, not paginated
+      height: Number.POSITIVE_INFINITY,
       groups: headerGroups,
       padding: 0,
     });
@@ -167,13 +144,15 @@ export function resolveRegions(resume: Resume, template: Template) {
       groups: footerGroups,
       padding: 0,
     });
-    bodyH -= (s.footerHeight || 0) + s.sectionGap;
   }
 
-  // Body columns
-  const layout: LayoutKind = template.layout;
+  const bodyY = contentY;
+  const bodyH = contentH;
+  const gap = s.columnGap;
+  const sidebarW = s.sidebarWidth;
+
   if (layout === "single" || layout === "footer") {
-    const g = headerGroups.length && layout === "single" ? [...headerGroups, ...mainGroups] : mainGroups;
+    const g = layout === "single" ? [...headerGroups, ...mainGroups] : mainGroups;
     regions.push({
       key: "main",
       variant: "main",
@@ -185,8 +164,7 @@ export function resolveRegions(resume: Resume, template: Template) {
       padding: 0,
     });
   } else if (layout === "twoCol" || layout === "headerTwoCol") {
-    const sideW = sidebarW;
-    const mainW = contentW - sideW - gap;
+    const mainW = contentW - sidebarW - gap;
     regions.push({
       key: "main",
       variant: "main",
@@ -202,15 +180,13 @@ export function resolveRegions(resume: Resume, template: Template) {
       variant: "sidebar",
       x: contentX + mainW + gap,
       y: bodyY,
-      width: sideW,
+      width: sidebarW,
       height: bodyH,
       groups: sidebarGroups,
       padding: 0,
     });
   } else if (layout === "threeCol" || layout === "headerThreeCol") {
-    const sideW = sidebarW;
-    const secW = sidebarW;
-    const mainW = contentW - sideW - secW - gap * 2;
+    const mainW = contentW - sidebarW * 2 - gap * 2;
     regions.push({
       key: "main",
       variant: "main",
@@ -226,7 +202,7 @@ export function resolveRegions(resume: Resume, template: Template) {
       variant: "sidebar",
       x: contentX + mainW + gap,
       y: bodyY,
-      width: sideW,
+      width: sidebarW,
       height: bodyH,
       groups: sidebarGroups,
       padding: 0,
@@ -234,55 +210,41 @@ export function resolveRegions(resume: Resume, template: Template) {
     regions.push({
       key: "second",
       variant: "sidebar",
-      x: contentX + mainW + gap + sideW + gap,
+      x: contentX + mainW + gap + sidebarW + gap,
       y: bodyY,
-      width: secW,
+      width: sidebarW,
       height: bodyH,
       groups: secondGroups,
       padding: 0,
     });
   }
 
-  return { regions, template };
+  return { regions };
 }
 
 // ---- Measurement ---------------------------------------------------------
 
-type BlockMeasure = {
-  height: number;
-};
-
 type GroupMeasure = {
   group: BlockGroup;
   blockHeights: number[];
-  totalHeight: number; // sum + entryGap * (n-1)
-  headerHeightIfSplit?: number; // for splittable entry: entry with 0 bullets
+  interBlockGap: number; // gap used between blocks inside this group
+  totalHeight: number;
+  headerHeightIfSplit?: number;
   perBulletHeight?: number;
 };
 
 type RegionMeasure = {
   region: Region;
   groups: GroupMeasure[];
-  measuredHeight?: number; // for header (unpaginated)
 };
 
-// Render blocks into a hidden container to measure exact heights.
-// Uses a portal so measurements happen at real DOM widths without disturbing
-// the visible layout.
 function MeasurementLayer({
   measurements,
   theme,
-  spacing,
   onMeasured,
 }: {
-  measurements: {
-    key: string;
-    width: number;
-    variant: Variant;
-    node: ReactNode;
-  }[];
+  measurements: { key: string; width: number; variant: Variant; node: ReactNode }[];
   theme: Theme;
-  spacing: Spacing;
   onMeasured: (heights: Record<string, number>) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -296,7 +258,7 @@ function MeasurementLayer({
       if (k) heights[k] = el.getBoundingClientRect().height;
     });
     onMeasured(heights);
-  }, [measurements, onMeasured, theme, spacing]);
+  }, [measurements, onMeasured, theme]);
 
   if (typeof document === "undefined") return null;
 
@@ -329,11 +291,10 @@ function MeasurementLayer({
   );
 }
 
-// Build the list of measure requests for a region: every block, plus for
-// splittable entry blocks also a 0-bullet variant to compute per-bullet height.
 function buildMeasureRequests(
   regions: Region[],
-  ctxByRegion: Record<RegionKey, { theme: Theme; spacing: Spacing; variant: Variant }>,
+  theme: Theme,
+  spacing: Spacing,
 ) {
   const requests: {
     key: string;
@@ -343,8 +304,8 @@ function buildMeasureRequests(
   }[] = [];
 
   regions.forEach((r) => {
-    const ctx = ctxByRegion[r.key];
     const innerWidth = r.width - r.padding * 2;
+    const ctx = { theme, spacing, variant: r.variant };
     r.groups.forEach((group, gi) => {
       group.blocks.forEach((block, bi) => {
         requests.push({
@@ -354,28 +315,17 @@ function buildMeasureRequests(
           node: <BlockView block={block} ctx={ctx} />,
         });
         if (block.kind === "entry" && block.entry.bullets.length > 1) {
-          // Measure entry with no bullets, and entry with 1 bullet, to derive
-          // per-bullet height. Bullet gaps are captured because full entry
-          // measurement also includes them.
-          const zeroBullets: Block = {
-            kind: "entry",
-            entry: { ...block.entry, bullets: [] },
-          };
-          const oneBullet: Block = {
-            kind: "entry",
-            entry: { ...block.entry, bullets: block.entry.bullets.slice(0, 1) },
-          };
           requests.push({
             key: `${r.key}:${gi}:${bi}:h0`,
             width: innerWidth,
             variant: r.variant,
-            node: <BlockView block={zeroBullets} ctx={ctx} />,
+            node: <BlockView block={{ kind: "entry", entry: { ...block.entry, bullets: [] } }} ctx={ctx} />,
           });
           requests.push({
             key: `${r.key}:${gi}:${bi}:h1`,
             width: innerWidth,
             variant: r.variant,
-            node: <BlockView block={oneBullet} ctx={ctx} />,
+            node: <BlockView block={{ kind: "entry", entry: { ...block.entry, bullets: block.entry.bullets.slice(0, 1) } }} ctx={ctx} />,
           });
         }
       });
@@ -388,19 +338,25 @@ function buildMeasureRequests(
 // ---- Pagination ---------------------------------------------------------
 
 function paginateRegion(
-  region: RegionMeasure,
+  rm: RegionMeasure,
   available: number,
   spacing: Spacing,
 ): PageColumn[] {
-  if (!region.region.groups.length) return [];
+  if (!rm.groups.length) return [];
 
-  const pages: Block[][] = [[]];
+  const pages: PlacedBlock[][] = [[]];
   let used = 0;
   let prevSection: string | null = null;
 
-  const push = (page: number, block: Block, size: number, gap: number) => {
-    pages[page].push(block);
-    used = used + gap + size;
+  const currentPage = () => pages[pages.length - 1];
+
+  const placeGroupOnCurrent = (gm: GroupMeasure, sectionGap: number) => {
+    gm.group.blocks.forEach((b, i) => {
+      const topGap = i === 0 ? sectionGap : gm.interBlockGap;
+      currentPage().push({ block: b, topGap, height: gm.blockHeights[i] });
+      used += topGap + gm.blockHeights[i];
+    });
+    prevSection = gm.group.section;
   };
 
   const newPage = () => {
@@ -409,62 +365,54 @@ function paginateRegion(
     prevSection = null;
   };
 
-  region.groups.forEach((gm) => {
-    const group = gm.group;
-    const groupHeight = gm.totalHeight;
-    const gap =
+  rm.groups.forEach((gm) => {
+    const sectionGap =
       prevSection === null
         ? 0
-        : prevSection === group.section
+        : prevSection === gm.group.section
         ? spacing.entryGap
         : spacing.sectionGap;
+    const total = gm.totalHeight + sectionGap;
 
-    if (used + gap + groupHeight <= available) {
-      // Place entire group on current page
-      let g = gap;
-      gm.group.blocks.forEach((b, i) => {
-        push(pages.length - 1, b, gm.blockHeights[i], i === 0 ? g : spacing.bulletGap);
-        g = 0;
-      });
-      // Recompute used deterministically (sum block heights + interior entryGap)
-      used = used - (gap + groupHeight) + gap + groupHeight;
-      prevSection = group.section;
+    if (used + total <= available) {
+      placeGroupOnCurrent(gm, sectionGap);
       return;
     }
 
-    // Doesn't fit: try to split if allowed
-    const splitInfo = trySplitEntry(gm, used + gap, available, spacing);
-    if (splitInfo) {
-      pages[pages.length - 1].push(splitInfo.first);
+    // Try split
+    const split = trySplitEntry(gm, used + sectionGap, available, spacing);
+    if (split) {
+      currentPage().push({
+        block: split.first,
+        topGap: sectionGap,
+        height: split.firstHeight,
+      });
+      used += sectionGap + split.firstHeight;
       newPage();
-      pages[pages.length - 1].push(splitInfo.rest);
-      // Estimate used after continuation for gap tracking
-      used = splitInfo.restHeight;
-      prevSection = group.section;
+      currentPage().push({
+        block: split.rest,
+        topGap: 0,
+        height: split.restHeight,
+      });
+      used = split.restHeight;
+      prevSection = gm.group.section;
       return;
     }
 
-    // Move whole group to next page
-    if (pages[pages.length - 1].length === 0) {
-      // Empty page and still doesn't fit: place anyway (avoid infinite loop).
-      gm.group.blocks.forEach((b, i) => {
-        pages[pages.length - 1].push(b);
-      });
-      used = groupHeight;
-      prevSection = group.section;
+    // Move to next page
+    if (currentPage().length === 0) {
+      // Empty page and still doesn't fit -> place anyway (overflow hidden)
+      placeGroupOnCurrent(gm, 0);
       newPage();
       return;
     }
     newPage();
-    gm.group.blocks.forEach((b) => pages[pages.length - 1].push(b));
-    used = groupHeight;
-    prevSection = group.section;
+    placeGroupOnCurrent(gm, 0);
   });
 
-  // Trim trailing empty page
-  if (pages[pages.length - 1].length === 0) pages.pop();
+  if (currentPage().length === 0) pages.pop();
 
-  return pages.map((blocks) => ({ region: region.region.key, blocks }));
+  return pages.map((placed) => ({ region: rm.region.key, placed }));
 }
 
 function trySplitEntry(
@@ -472,42 +420,33 @@ function trySplitEntry(
   usedBefore: number,
   available: number,
   spacing: Spacing,
-): { first: Block; rest: Block; restHeight: number } | null {
+): { first: Block; firstHeight: number; rest: Block; restHeight: number } | null {
   const group = gm.group;
   if (!group.splittable) return null;
-  // Only entry blocks are splittable in v1.
   const entryIdx = group.blocks.findIndex((b) => b.kind === "entry");
   if (entryIdx === -1) return null;
   const entryBlock = group.blocks[entryIdx] as Extract<Block, { kind: "entry" }>;
   const bullets = entryBlock.entry.bullets;
   if (bullets.length < 2) return null;
-
   const headerH = gm.headerHeightIfSplit;
   const perBullet = gm.perBulletHeight;
   if (headerH === undefined || perBullet === undefined) return null;
 
   const spaceLeft = available - usedBefore;
-  // Header + K bullets must fit; each bullet costs perBullet + bulletGap.
   const perRow = perBullet + spacing.bulletGap;
   const maxK = Math.floor((spaceLeft - headerH) / perRow);
-  if (maxK < 1) return null;
-  if (maxK >= bullets.length) return null;
+  if (maxK < 1 || maxK >= bullets.length) return null;
 
-  const firstBullets = bullets.slice(0, maxK);
-  const restBullets = bullets.slice(maxK);
-
-  const first: Block = {
-    kind: "entry",
-    entry: { ...entryBlock.entry, bullets: firstBullets },
-  };
+  const first: Block = { kind: "entry", entry: { ...entryBlock.entry, bullets: bullets.slice(0, maxK) } };
   const rest: Block = {
     kind: "entryContinuation",
     entry: entryBlock.entry,
-    bullets: restBullets,
+    bullets: bullets.slice(maxK),
     showTitle: true,
   };
-  const restHeight = headerH + restBullets.length * perRow;
-  return { first, rest, restHeight };
+  const firstHeight = headerH + maxK * perRow;
+  const restHeight = headerH + (bullets.length - maxK) * perRow;
+  return { first, firstHeight, rest, restHeight };
 }
 
 // ---- Document component --------------------------------------------------
@@ -521,47 +460,31 @@ export function ResumeDocument({
   template: Template;
   onPageCount?: (n: number) => void;
 }) {
-  const { regions } = useMemo(
-    () => resolveRegions(resume, template),
-    [resume, template],
-  );
-
-  const ctxByRegion = useMemo(() => {
-    const map = {} as Record<RegionKey, { theme: Theme; spacing: Spacing; variant: Variant }>;
-    regions.forEach((r) => {
-      map[r.key] = { theme: template.theme, spacing: template.spacing, variant: r.variant };
-    });
-    return map;
-  }, [regions, template]);
-
+  const { regions } = useMemo(() => resolveRegions(resume, template), [resume, template]);
   const measureRequests = useMemo(
-    () => buildMeasureRequests(regions, ctxByRegion),
-    [regions, ctxByRegion],
+    () => buildMeasureRequests(regions, template.theme, template.spacing),
+    [regions, template],
   );
 
   const [heights, setHeights] = useState<Record<string, number>>({});
-  const measureKey = useMemo(
-    () => measureRequests.map((r) => r.key).join("|"),
-    [measureRequests],
-  );
-  // Reset heights whenever the request set changes (template or resume change).
+  const measureKey = useMemo(() => measureRequests.map((r) => r.key).join("|"), [measureRequests]);
   useEffect(() => {
     setHeights({});
   }, [measureKey]);
 
-  const allMeasured = measureRequests.length > 0 &&
+  const allMeasured =
+    measureRequests.length > 0 &&
     measureRequests.every((r) => heights[r.key] !== undefined);
 
-  // Build measured groups per region
   const regionMeasures: RegionMeasure[] = useMemo(() => {
     if (!allMeasured) return [];
     return regions.map((r) => {
       const groups: GroupMeasure[] = r.groups.map((group, gi) => {
         const blockHeights = group.blocks.map((_b, bi) => heights[`${r.key}:${gi}:${bi}`] ?? 0);
+        const interBlockGap = template.spacing.bulletGap;
         const total =
           blockHeights.reduce((a, b) => a + b, 0) +
-          Math.max(0, blockHeights.length - 1) * template.spacing.bulletGap;
-
+          Math.max(0, blockHeights.length - 1) * interBlockGap;
         let headerHeightIfSplit: number | undefined;
         let perBulletHeight: number | undefined;
         group.blocks.forEach((b, bi) => {
@@ -574,53 +497,50 @@ export function ResumeDocument({
             }
           }
         });
-
-        return {
-          group,
-          blockHeights,
-          totalHeight: total,
-          headerHeightIfSplit,
-          perBulletHeight,
-        };
+        return { group, blockHeights, interBlockGap, totalHeight: total, headerHeightIfSplit, perBulletHeight };
       });
       return { region: r, groups };
     });
   }, [allMeasured, regions, heights, template.spacing.bulletGap]);
 
-  // Compute header height (if any)
-  const headerRegion = regionMeasures.find((r) => r.region.key === "header");
-  const headerHeight = headerRegion
-    ? headerRegion.groups.reduce((sum, g, i) => sum + g.totalHeight + (i > 0 ? template.spacing.sectionGap : 0), 0)
+  const headerRM = regionMeasures.find((r) => r.region.key === "header");
+  const footerRM = regionMeasures.find((r) => r.region.key === "footer");
+  const bodyRMs = regionMeasures.filter((r) => r.region.key !== "header" && r.region.key !== "footer");
+
+  const headerHeight = headerRM
+    ? headerRM.groups.reduce(
+        (sum, g, i) => sum + g.totalHeight + (i > 0 ? template.spacing.sectionGap : 0),
+        0,
+      )
+    : 0;
+  const footerHeight = footerRM
+    ? footerRM.groups.reduce(
+        (sum, g, i) => sum + g.totalHeight + (i > 0 ? template.spacing.entryGap : 0),
+        0,
+      )
     : 0;
 
-  // Available height for paginated regions
-  const bodyRegions = regionMeasures.filter(
-    (r) => r.region.key !== "header" && r.region.key !== "footer",
-  );
-  const footerRegion = regionMeasures.find((r) => r.region.key === "footer");
-
-  const footerHeight = footerRegion
-    ? footerRegion.groups.reduce((sum, g, i) => sum + g.totalHeight + (i > 0 ? template.spacing.entryGap : 0), 0)
-    : 0;
-
-  // Paginate each body region independently
-  const pagesPerRegion: Record<RegionKey, PageColumn[]> = useMemo(() => {
-    const out = {} as Record<RegionKey, PageColumn[]>;
+  const pagesPerRegion = useMemo(() => {
+    const out: Record<string, PageColumn[]> = {};
     if (!allMeasured) return out;
-    bodyRegions.forEach((r) => {
-      const isFullPage = r.region.fullPageHeight;
+    bodyRMs.forEach((rm) => {
       let available: number;
-      if (isFullPage) {
-        available = PAGE_HEIGHT_PX - r.region.padding * 2;
-      } else if (r.region.key === "main") {
-        available = r.region.height - headerHeight - (headerHeight > 0 ? template.spacing.sectionGap : 0) - (footerHeight > 0 ? footerHeight + template.spacing.sectionGap : 0);
+      if (rm.region.fullPageHeight) {
+        available = PAGE_HEIGHT_PX - rm.region.padding * 2;
+      } else if (rm.region.key === "main") {
+        available =
+          rm.region.height -
+          (headerHeight > 0 ? headerHeight + template.spacing.sectionGap : 0) -
+          (footerHeight > 0 ? footerHeight + template.spacing.sectionGap : 0);
       } else {
-        available = r.region.height - (footerHeight > 0 ? footerHeight + template.spacing.sectionGap : 0);
+        available =
+          rm.region.height -
+          (footerHeight > 0 ? footerHeight + template.spacing.sectionGap : 0);
       }
-      out[r.region.key] = paginateRegion(r, available, template.spacing);
+      out[rm.region.key] = paginateRegion(rm, available, template.spacing);
     });
     return out;
-  }, [allMeasured, bodyRegions, headerHeight, footerHeight, template.spacing]);
+  }, [allMeasured, bodyRMs, headerHeight, footerHeight, template.spacing]);
 
   const totalPages = useMemo(() => {
     if (!allMeasured) return 1;
@@ -635,30 +555,26 @@ export function ResumeDocument({
     onPageCount?.(totalPages);
   }, [totalPages, onPageCount]);
 
-  // Build final PageModel[]
   const pageModels: PageModel[] = useMemo(() => {
     const arr: PageModel[] = [];
     for (let i = 0; i < totalPages; i++) {
       const cols: PageColumn[] = [];
-      bodyRegions.forEach((r) => {
-        const p = pagesPerRegion[r.region.key]?.[i];
-        if (p) cols.push(p);
-        else cols.push({ region: r.region.key, blocks: [] });
+      bodyRMs.forEach((rm) => {
+        const p = pagesPerRegion[rm.region.key]?.[i];
+        cols.push(p ?? { region: rm.region.key, placed: [] });
       });
       arr.push({ index: i, columns: cols });
     }
     return arr;
-  }, [totalPages, bodyRegions, pagesPerRegion]);
+  }, [totalPages, bodyRMs, pagesPerRegion]);
 
   return (
     <>
       <MeasurementLayer
         measurements={measureRequests}
         theme={template.theme}
-        spacing={template.spacing}
         onMeasured={(h) => {
           setHeights((prev) => {
-            // Only update if changed to avoid loops.
             const merged = { ...prev, ...h };
             const changed = Object.keys(merged).some((k) => prev[k] !== merged[k]);
             return changed ? merged : prev;
@@ -672,15 +588,12 @@ export function ResumeDocument({
             page={pm}
             regions={regions}
             template={template}
-            ctxByRegion={ctxByRegion}
-            headerRegion={headerRegion}
-            footerRegion={footerRegion}
+            headerRM={headerRM}
+            footerRM={footerRM}
             headerHeight={headerHeight}
             footerHeight={footerHeight}
             showHeader={i === 0}
             showFooter={true}
-            pageNumber={i + 1}
-            pageCount={totalPages}
           />
         ))}
       {!allMeasured && <PagePlaceholder />}
@@ -707,9 +620,8 @@ function PageView({
   page,
   regions,
   template,
-  ctxByRegion,
-  headerRegion,
-  footerRegion,
+  headerRM,
+  footerRM,
   headerHeight,
   footerHeight,
   showHeader,
@@ -718,15 +630,12 @@ function PageView({
   page: PageModel;
   regions: Region[];
   template: Template;
-  ctxByRegion: Record<RegionKey, { theme: Theme; spacing: Spacing; variant: Variant }>;
-  headerRegion?: RegionMeasure;
-  footerRegion?: RegionMeasure;
+  headerRM?: RegionMeasure;
+  footerRM?: RegionMeasure;
   headerHeight: number;
   footerHeight: number;
   showHeader: boolean;
   showFooter: boolean;
-  pageNumber: number;
-  pageCount: number;
 }) {
   const s = template.spacing;
   const t = template.theme;
@@ -744,19 +653,53 @@ function PageView({
     boxSizing: "border-box",
   };
 
+  const renderPlacedBlocks = (placed: PlacedBlock[], variant: Variant) => (
+    <>
+      {placed.map((pb, i) => (
+        <div key={i} style={{ marginTop: pb.topGap }}>
+          <BlockView block={pb.block} ctx={{ theme: t, spacing: s, variant }} />
+        </div>
+      ))}
+    </>
+  );
+
+  // Render header/footer inline: they aren't paginated (single-page slots).
+  const renderStaticRegion = (rm: RegionMeasure, variant: Variant) => {
+    // Reuse the same gap system by faking "placed" list.
+    let prevSection: string | null = null;
+    const placed: PlacedBlock[] = [];
+    rm.groups.forEach((gm) => {
+      const sectionGap =
+        prevSection === null
+          ? 0
+          : prevSection === gm.group.section
+          ? s.entryGap
+          : s.sectionGap;
+      gm.group.blocks.forEach((b, i) => {
+        placed.push({
+          block: b,
+          topGap: i === 0 ? sectionGap : gm.interBlockGap,
+          height: gm.blockHeights[i],
+        });
+      });
+      prevSection = gm.group.section;
+    });
+    return renderPlacedBlocks(placed, variant);
+  };
+
   return (
     <div className="resume-page" style={pageStyle}>
       {regions.map((r) => {
-        const isBody = r.key !== "header" && r.key !== "footer";
-        const showThis =
-          (r.key === "header" && showHeader) ||
-          (r.key === "footer" && showFooter) ||
-          isBody;
-        if (!showThis) return null;
+        const isHeader = r.key === "header";
+        const isFooter = r.key === "footer";
+        const isBody = !isHeader && !isFooter;
 
-        // For a "main" body region on page 1 with a header, push down by header height.
+        if (isHeader && !showHeader) return null;
+        if (isFooter && !showFooter) return null;
+
         let y = r.y;
         let height = r.height;
+
         if (r.key === "main" && showHeader && headerHeight > 0) {
           y = r.y + headerHeight + s.sectionGap;
           height = r.height - headerHeight - s.sectionGap;
@@ -765,19 +708,10 @@ function PageView({
           height = height - footerHeight - s.sectionGap;
         }
 
-        const bodyBlocks = isBody
-          ? page.columns.find((c) => c.region === r.key)?.blocks ?? []
-          : r.groups.flatMap((g) => g.blocks);
-
-        const bg = r.backgroundColor && r.backgroundColor !== "transparent" ? r.backgroundColor : undefined;
-
-        const gapForBlocks = (blocks: Block[], groups: BlockGroup[]) => {
-          // We use section-level gaps between blocks from different groups and
-          // entryGap between blocks from same section. For rendered blocks we
-          // just apply the templated section gap between top-level entries; a
-          // finer-grained pass would map each rendered block back to its group.
-          return blocks;
-        };
+        const bg =
+          r.backgroundColor && r.backgroundColor !== "transparent"
+            ? r.backgroundColor
+            : undefined;
 
         return (
           <div
@@ -787,37 +721,31 @@ function PageView({
               left: r.x,
               top: r.fullPageHeight ? 0 : y,
               width: r.width,
-              height: r.fullPageHeight ? PAGE_HEIGHT_PX : height,
+              height: r.fullPageHeight
+                ? PAGE_HEIGHT_PX
+                : isHeader
+                ? "auto"
+                : height,
               padding: r.padding,
               boxSizing: "border-box",
               background: bg,
               color: r.variant === "sidebar" && bg ? t.sidebarText : undefined,
-              display: "flex",
-              flexDirection: "column",
-              gap: computeRegionGap(r, template),
               overflow: "hidden",
             }}
           >
-            {bodyBlocks.map((b, i) => (
-              <BlockView
-                key={i}
-                block={b}
-                ctx={{
-                  theme: t,
-                  spacing: s,
-                  variant: r.variant,
-                }}
-              />
-            ))}
+            {isBody
+              ? renderPlacedBlocks(
+                  page.columns.find((c) => c.region === r.key)?.placed ?? [],
+                  r.variant,
+                )
+              : isHeader && headerRM
+              ? renderStaticRegion(headerRM, r.variant)
+              : isFooter && footerRM
+              ? renderStaticRegion(footerRM, r.variant)
+              : null}
           </div>
         );
       })}
     </div>
   );
-}
-
-function computeRegionGap(_r: Region, template: Template): number {
-  // Rendered blocks are separated by entryGap; larger section gaps are baked
-  // into the paginator's used-height accounting so preview matches print.
-  return template.spacing.entryGap;
 }
