@@ -54,9 +54,15 @@ type Region = {
   fullPageHeight?: boolean; // for sidebars that span full page height
 };
 
+type PlacedBlock = {
+  block: Block;
+  topGap: number;
+  height: number;
+};
+
 type PageColumn = {
   region: RegionKey;
-  blocks: Block[];
+  placed: PlacedBlock[];
 };
 
 type PageModel = {
