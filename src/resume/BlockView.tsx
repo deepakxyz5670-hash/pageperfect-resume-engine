@@ -367,6 +367,9 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
                     fontSize: `${theme.baseSize + 0.5}px`,
                     fontWeight: 600,
                     color: textColor,
+                    minWidth: 0,
+                    flex: 1,
+                    overflowWrap: "anywhere",
                   }}
                 >
                   {entry.title}
@@ -380,6 +383,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
                       fontSize: `${theme.baseSize - 0.5}px`,
                       color: mutedColor,
                       whiteSpace: "nowrap",
+                      flexShrink: 0,
                     }}
                   >
                     {entry.meta}
@@ -396,8 +400,12 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
                     color: mutedColor,
                   }}
                 >
-                  <span>{entry.subtitle}</span>
-                  {entry.metaSub && <span>{entry.metaSub}</span>}
+                  <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{entry.subtitle}</span>
+                  {entry.metaSub && (
+                    <span style={{ flexShrink: 0, textAlign: "right", overflowWrap: "anywhere" }}>
+                      {entry.metaSub}
+                    </span>
+                  )}
                 </div>
               )}
             </>
@@ -440,7 +448,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
                   <span style={{ color: theme.accent, lineHeight: 1.45 }}>
                     {bulletChar(theme)}
                   </span>
-                  <span>{b}</span>
+                  <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{b}</span>
                 </li>
               ))}
             </ul>
@@ -494,6 +502,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
               fontSize: `${theme.baseSize}px`,
               color: textColor,
               lineHeight: 1.45,
+              overflowWrap: "anywhere",
             }}
           >
             {block.items.join(", ")}
@@ -506,9 +515,10 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "auto 1fr",
+            gridTemplateColumns: "minmax(0, auto) minmax(0, 1fr)",
             columnGap: 14,
             rowGap: 4,
+            minWidth: 0,
           }}
         >
           {block.groups.map((g, i) => (
@@ -518,7 +528,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
                   fontSize: `${theme.baseSize - 0.5}px`,
                   fontWeight: 600,
                   color: theme.primary,
-                  whiteSpace: "nowrap",
+                  overflowWrap: "anywhere",
                 }}
               >
                 {g.category}
@@ -528,6 +538,8 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
                   fontSize: `${theme.baseSize}px`,
                   color: textColor,
                   lineHeight: 1.45,
+                  minWidth: 0,
+                  overflowWrap: "anywhere",
                 }}
               >
                 {g.items.join(", ")}
@@ -570,11 +582,12 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
                 fontSize: `${theme.baseSize}px`,
                 color: textColor,
                 lineHeight: 1.4,
+                minWidth: 0,
               }}
             >
-              <span style={{ fontWeight: 500 }}>{r.key}</span>
+              <span style={{ fontWeight: 500, minWidth: 0, overflowWrap: "anywhere" }}>{r.key}</span>
               {r.value && (
-                <span style={{ color: mutedColor, textAlign: "right" }}>
+                <span style={{ color: mutedColor, textAlign: "right", minWidth: 0, overflowWrap: "anywhere" }}>
                   {r.value}
                 </span>
               )}

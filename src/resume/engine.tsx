@@ -52,6 +52,11 @@ type PlacedBlock = {
   height: number;
 };
 
+// Browser layout can land on fractional pixels because fonts use fractional
+// line metrics. Keep a small reserve so a block that is mathematically flush
+// with the boundary is never clipped by sub-pixel rounding in preview/print.
+const LAYOUT_SAFETY_PX = 8;
+
 type PageColumn = {
   region: RegionKey;
   placed: PlacedBlock[];
@@ -233,6 +238,11 @@ type GroupMeasure = {
   perBulletHeight?: number;
 };
 
+type MeasuredLayout = {
+  signature: string;
+  heights: Record<string, number>;
+};
+
 type RegionMeasure = {
   region: Region;
   groups: GroupMeasure[];
@@ -251,13 +261,31 @@ function MeasurementLayer({
 
   useLayoutEffect(() => {
     if (!containerRef.current) return;
-    const heights: Record<string, number> = {};
-    const nodes = containerRef.current.querySelectorAll<HTMLElement>("[data-measure-key]");
-    nodes.forEach((el) => {
-      const k = el.getAttribute("data-measure-key");
-      if (k) heights[k] = el.getBoundingClientRect().height;
-    });
-    onMeasured(heights);
+    let cancelled = false;
+
+    const measure = () => {
+      if (cancelled || !containerRef.current) return;
+      const heights: Record<string, number> = {};
+      const nodes = containerRef.current.querySelectorAll<HTMLElement>("[data-measure-key]");
+      nodes.forEach((el) => {
+        const k = el.getAttribute("data-measure-key");
+        if (k) heights[k] = el.getBoundingClientRect().height;
+      });
+      onMeasured(heights);
+    };
+
+    const fonts = document.fonts;
+    if (fonts?.status === "loading") {
+      void fonts.ready.then(measure);
+    } else {
+      measure();
+    }
+
+    fonts?.addEventListener("loadingdone", measure);
+    return () => {
+      cancelled = true;
+      fonts?.removeEventListener("loadingdone", measure);
+    };
   }, [measurements, onMeasured, theme]);
 
   if (typeof document === "undefined") return null;
@@ -380,7 +408,7 @@ function paginateRegion(
     }
 
     // Try split
-    const split = trySplitEntry(gm, used + sectionGap, available, spacing);
+    const split = trySplitEntry(gm, used + sectionGap, available);
     if (split) {
       currentPage().push({
         block: split.first,
@@ -419,7 +447,6 @@ function trySplitEntry(
   gm: GroupMeasure,
   usedBefore: number,
   available: number,
-  spacing: Spacing,
 ): { first: Block; firstHeight: number; rest: Block; restHeight: number } | null {
   const group = gm.group;
   if (!group.splittable) return null;
@@ -433,8 +460,7 @@ function trySplitEntry(
   if (headerH === undefined || perBullet === undefined) return null;
 
   const spaceLeft = available - usedBefore;
-  const perRow = perBullet + spacing.bulletGap;
-  const maxK = Math.floor((spaceLeft - headerH) / perRow);
+  const maxK = Math.floor((spaceLeft - headerH - LAYOUT_SAFETY_PX) / perBullet);
   if (maxK < 1 || maxK >= bullets.length) return null;
 
   const first: Block = { kind: "entry", entry: { ...entryBlock.entry, bullets: bullets.slice(0, maxK) } };
@@ -444,8 +470,8 @@ function trySplitEntry(
     bullets: bullets.slice(maxK),
     showTitle: true,
   };
-  const firstHeight = headerH + maxK * perRow;
-  const restHeight = headerH + (bullets.length - maxK) * perRow;
+  const firstHeight = headerH + maxK * perBullet;
+  const restHeight = headerH + (bullets.length - maxK) * perBullet;
   return { first, firstHeight, rest, restHeight };
 }
 
@@ -466,13 +492,24 @@ export function ResumeDocument({
     [regions, template],
   );
 
-  const [heights, setHeights] = useState<Record<string, number>>({});
-  const measureKey = useMemo(() => measureRequests.map((r) => r.key).join("|"), [measureRequests]);
-  useEffect(() => {
-    setHeights({});
-  }, [measureKey]);
+  const measurementSignature = useMemo(
+    () =>
+      JSON.stringify({
+        template: template.id,
+        theme: template.theme,
+        spacing: template.spacing,
+        requests: measureRequests.map((r) => [r.key, r.width]),
+      }),
+    [measureRequests, template],
+  );
+  const [measuredLayout, setMeasuredLayout] = useState<MeasuredLayout>({
+    signature: "",
+    heights: {},
+  });
+  const heights = measuredLayout.heights;
 
   const allMeasured =
+    measuredLayout.signature === measurementSignature &&
     measureRequests.length > 0 &&
     measureRequests.every((r) => heights[r.key] !== undefined);
 
@@ -527,17 +564,17 @@ export function ResumeDocument({
       let available: number;
       if (rm.region.fullPageHeight) {
         available = PAGE_HEIGHT_PX - rm.region.padding * 2;
-      } else if (rm.region.key === "main") {
+      } else {
         available =
           rm.region.height -
           (headerHeight > 0 ? headerHeight + template.spacing.sectionGap : 0) -
           (footerHeight > 0 ? footerHeight + template.spacing.sectionGap : 0);
-      } else {
-        available =
-          rm.region.height -
-          (footerHeight > 0 ? footerHeight + template.spacing.sectionGap : 0);
       }
-      out[rm.region.key] = paginateRegion(rm, available, template.spacing);
+      out[rm.region.key] = paginateRegion(
+        rm,
+        Math.max(0, available - LAYOUT_SAFETY_PX),
+        template.spacing,
+      );
     });
     return out;
   }, [allMeasured, bodyRMs, headerHeight, footerHeight, template.spacing]);
@@ -574,10 +611,13 @@ export function ResumeDocument({
         measurements={measureRequests}
         theme={template.theme}
         onMeasured={(h) => {
-          setHeights((prev) => {
-            const merged = { ...prev, ...h };
-            const changed = Object.keys(merged).some((k) => prev[k] !== merged[k]);
-            return changed ? merged : prev;
+          setMeasuredLayout((prev) => {
+            if (prev.signature !== measurementSignature) {
+              return { signature: measurementSignature, heights: h };
+            }
+            const merged = { ...prev.heights, ...h };
+            const changed = Object.keys(merged).some((k) => prev.heights[k] !== merged[k]);
+            return changed ? { signature: measurementSignature, heights: merged } : prev;
           });
         }}
       />
@@ -654,13 +694,13 @@ function PageView({
   };
 
   const renderPlacedBlocks = (placed: PlacedBlock[], variant: Variant) => (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
       {placed.map((pb, i) => (
-        <div key={i} style={{ marginTop: pb.topGap }}>
+        <div key={i} style={{ marginTop: pb.topGap, flex: "0 0 auto", minWidth: 0 }}>
           <BlockView block={pb.block} ctx={{ theme: t, spacing: s, variant }} />
         </div>
       ))}
-    </>
+    </div>
   );
 
   // Render header/footer inline: they aren't paginated (single-page slots).
@@ -700,7 +740,7 @@ function PageView({
         let y = r.y;
         let height = r.height;
 
-        if (r.key === "main" && showHeader && headerHeight > 0) {
+        if (isBody && !r.fullPageHeight && showHeader && headerHeight > 0) {
           y = r.y + headerHeight + s.sectionGap;
           height = r.height - headerHeight - s.sectionGap;
         }
