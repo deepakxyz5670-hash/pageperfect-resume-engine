@@ -42,6 +42,15 @@ export type Theme = {
   bulletStyle: "dot" | "dash" | "square";
   radius: number; // px
   accentBar: boolean;
+  // Optional header/avatar treatments (used by profileHeader block)
+  headerBg?: string;
+  headerText?: string;
+  headerRadius?: number;
+  avatar?: "none" | "initials";
+  avatarPlacement?: "left" | "center" | "right";
+  avatarSize?: number;
+  avatarBg?: string;
+  avatarText?: string;
 };
 
 export type Spacing = {
