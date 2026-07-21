@@ -1154,6 +1154,9 @@ templates.push(
   }),
 );
 
+export const templateById = new Map(templates.map((t) => [t.id, t]));
+
+
 
 export function getTemplate(id: string): Template {
   return templateById.get(id) ?? templates[0];
