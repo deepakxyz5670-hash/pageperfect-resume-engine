@@ -42,6 +42,15 @@ export type Theme = {
   bulletStyle: "dot" | "dash" | "square";
   radius: number; // px
   accentBar: boolean;
+  // Optional header/avatar treatments (used by profileHeader block)
+  headerBg?: string;
+  headerText?: string;
+  headerRadius?: number;
+  avatar?: "none" | "initials";
+  avatarPlacement?: "left" | "center" | "right";
+  avatarSize?: number;
+  avatarBg?: string;
+  avatarText?: string;
 };
 
 export type Spacing = {
@@ -937,7 +946,217 @@ export const templates: Template[] = [
   }),
 ];
 
+
+// --- Templates with header background & avatar treatments ----------------
+templates.push(
+  tpl({
+    id: "navyHeaderBanner",
+    name: "Navy Header Banner",
+    description: "Full-width navy header banner with initials avatar on the left.",
+    layout: "headerTwoCol",
+    headerSections: ["profile"],
+    mainSections: ["summary", "experience", "projects"],
+    sidebarSections: ["skills", "education", "certifications", "languages"],
+    theme: {
+      ...baseTheme,
+      accent: "#38bdf8",
+      primary: "#0f172a",
+      headerBg: "#0b1f3a",
+      headerText: "#f8fafc",
+      headerRadius: 12,
+      avatar: "initials",
+      avatarPlacement: "left",
+      avatarBg: "#38bdf8",
+      avatarText: "#0b1f3a",
+      sectionTitleStyle: "bar",
+      accentBar: true,
+      headingFont: 'Inter, sans-serif',
+    },
+    spacing: { ...baseSpacing, sidebarWidth: 230, sectionGap: 18 },
+  }),
+  tpl({
+    id: "centeredAvatarClean",
+    name: "Centered Avatar",
+    description: "Centered avatar & name over a clean single column.",
+    layout: "single",
+    mainSections: ["profile", "summary", "experience", "projects", "education", "skills"],
+    headerSections: [],
+    theme: {
+      ...baseTheme,
+      accent: "#7c3aed",
+      primary: "#111827",
+      avatar: "initials",
+      avatarPlacement: "center",
+      avatarBg: "#7c3aed",
+      avatarText: "#fff",
+      avatarSize: 84,
+      sectionTitleStyle: "underline",
+      accentBar: false,
+      headingFont: '"Space Grotesk", Inter, sans-serif',
+    },
+    spacing: { ...baseSpacing, sectionGap: 20 },
+  }),
+  tpl({
+    id: "emeraldHeaderCard",
+    name: "Emerald Header Card",
+    description: "Rounded emerald header card with right-aligned avatar.",
+    layout: "headerTwoCol",
+    headerSections: ["profile"],
+    mainSections: ["summary", "experience", "projects", "awards"],
+    sidebarSections: ["skills", "education", "certifications", "languages"],
+    theme: {
+      ...baseTheme,
+      accent: "#059669",
+      primary: "#064e3b",
+      headerBg: "#065f46",
+      headerText: "#ecfdf5",
+      headerRadius: 16,
+      avatar: "initials",
+      avatarPlacement: "right",
+      avatarBg: "#ecfdf5",
+      avatarText: "#065f46",
+      sectionTitleStyle: "chip",
+      accentBar: false,
+      radius: 10,
+      headingFont: 'Inter, sans-serif',
+    },
+    spacing: { ...baseSpacing, sidebarWidth: 230, sectionGap: 18 },
+  }),
+  tpl({
+    id: "splitContactMain",
+    name: "Split Contact & Main",
+    description: "Dark left sidebar with avatar + all contact details, main content on the right.",
+    layout: "leftSidebar",
+    headerSections: [],
+    sidebarSections: ["profile", "skills", "languages", "certifications"],
+    mainSections: ["summary", "experience", "projects", "education", "awards"],
+    theme: {
+      ...baseTheme,
+      accent: "#f59e0b",
+      primary: "#0f172a",
+      sidebarBg: "#111827",
+      sidebarText: "#f9fafb",
+      avatar: "initials",
+      avatarPlacement: "left",
+      avatarBg: "#f59e0b",
+      avatarText: "#111827",
+      avatarSize: 76,
+      sectionTitleStyle: "bar",
+      accentBar: true,
+      headingFont: 'Inter, sans-serif',
+    },
+    spacing: { ...baseSpacing, sidebarWidth: 260, sidebarPadding: 24, sectionGap: 16 },
+  }),
+  tpl({
+    id: "rightContactCard",
+    name: "Right Contact Card",
+    description: "Name & summary on the left, tinted contact card on the right.",
+    layout: "rightSidebar",
+    headerSections: [],
+    sidebarSections: ["profile", "skills", "languages"],
+    mainSections: ["summary", "experience", "projects", "education", "certifications", "awards"],
+    theme: {
+      ...baseTheme,
+      accent: "#0ea5e9",
+      primary: "#0c4a6e",
+      sidebarBg: "#f0f9ff",
+      sidebarText: "#0c4a6e",
+      avatar: "initials",
+      avatarPlacement: "left",
+      avatarBg: "#0ea5e9",
+      avatarText: "#fff",
+      sectionTitleStyle: "underline",
+      accentBar: false,
+      headingFont: 'Inter, sans-serif',
+    },
+    spacing: { ...baseSpacing, sidebarWidth: 250, sidebarPadding: 22 },
+  }),
+  tpl({
+    id: "gradientHeader",
+    name: "Gradient Header",
+    description: "Warm gradient-style header banner with centered avatar.",
+    layout: "headerTwoCol",
+    headerSections: ["profile"],
+    mainSections: ["summary", "experience", "projects"],
+    sidebarSections: ["skills", "education", "certifications", "languages"],
+    theme: {
+      ...baseTheme,
+      accent: "#f43f5e",
+      primary: "#4c0519",
+      headerBg: "linear-gradient(135deg, #f43f5e 0%, #f97316 100%)",
+      headerText: "#fff",
+      headerRadius: 14,
+      avatar: "initials",
+      avatarPlacement: "center",
+      avatarBg: "#fff",
+      avatarText: "#be123c",
+      avatarSize: 80,
+      sectionTitleStyle: "bar",
+      accentBar: true,
+      headingFont: '"Poppins", Inter, sans-serif',
+    },
+    spacing: { ...baseSpacing, sidebarWidth: 220, sectionGap: 18 },
+  }),
+  tpl({
+    id: "monoBlackHeader",
+    name: "Mono Black Header",
+    description: "Bold black banner header with square avatar-initials and Space Grotesk type.",
+    layout: "headerTwoCol",
+    headerSections: ["profile"],
+    mainSections: ["summary", "experience", "projects"],
+    sidebarSections: ["skills", "education", "certifications", "languages"],
+    theme: {
+      ...baseTheme,
+      accent: "#facc15",
+      primary: "#000",
+      headerBg: "#0a0a0a",
+      headerText: "#fafafa",
+      headerRadius: 4,
+      avatar: "initials",
+      avatarPlacement: "left",
+      avatarBg: "#facc15",
+      avatarText: "#000",
+      sectionTitleStyle: "plain",
+      sectionTitleTransform: "uppercase",
+      accentBar: false,
+      bulletStyle: "square",
+      headingFont: '"Space Grotesk", Inter, sans-serif',
+    },
+    spacing: { ...baseSpacing, sidebarWidth: 220 },
+  }),
+  tpl({
+    id: "creamAvatarBook",
+    name: "Cream Avatar Book",
+    description: "Warm cream palette, editorial serif, purple initials avatar left of a two-column body.",
+    layout: "headerTwoCol",
+    headerSections: ["profile"],
+    mainSections: ["summary", "experience", "projects", "publications"],
+    sidebarSections: ["skills", "education", "certifications", "languages", "awards"],
+    theme: {
+      ...baseTheme,
+      accent: "#7c3aed",
+      primary: "#1f1147",
+      headerBg: "#fdf6ec",
+      headerText: "#1f1147",
+      headerRadius: 12,
+      avatar: "initials",
+      avatarPlacement: "left",
+      avatarBg: "#7c3aed",
+      avatarText: "#fff",
+      avatarSize: 74,
+      sectionTitleStyle: "underline",
+      accentBar: false,
+      headingFont: '"Fraunces", Georgia, serif',
+      bodyFont: 'Inter, sans-serif',
+      divider: "#e5d5c0",
+    },
+    spacing: { ...baseSpacing, sidebarWidth: 220, sectionGap: 20 },
+  }),
+);
+
 export const templateById = new Map(templates.map((t) => [t.id, t]));
+
+
 
 export function getTemplate(id: string): Template {
   return templateById.get(id) ?? templates[0];

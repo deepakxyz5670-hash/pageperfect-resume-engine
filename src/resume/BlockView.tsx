@@ -73,16 +73,63 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
         p.website && { icon: Globe, text: p.website },
         ...p.links.map((l) => ({ icon: LinkIcon, text: `${l.label}: ${l.url}` })),
       ].filter(Boolean) as { icon: typeof Mail; text: string }[];
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+
+      const hasHeaderBg = !!theme.headerBg;
+      const nameColor = hasHeaderBg ? theme.headerText || "#fff" : theme.primary;
+      const subColor = hasHeaderBg ? theme.headerText || "#fff" : theme.accent;
+      const itemColor = hasHeaderBg ? theme.headerText || "#fff" : mutedColor;
+      const placement = theme.avatarPlacement ?? "left";
+      const showAvatar = theme.avatar === "initials";
+      const avatarSize = theme.avatarSize ?? 68;
+      const initials = (p.fullName || "?")
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((s) => s[0]?.toUpperCase() ?? "")
+        .join("");
+
+      const avatarNode = showAvatar ? (
+        <div
+          style={{
+            width: avatarSize,
+            height: avatarSize,
+            borderRadius: "50%",
+            background: theme.avatarBg || theme.accent,
+            color: theme.avatarText || "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "var(--r-heading-font)",
+            fontWeight: theme.headingWeight,
+            fontSize: Math.round(avatarSize * 0.38),
+            flexShrink: 0,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {initials}
+        </div>
+      ) : null;
+
+      const textCol = (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            minWidth: 0,
+            flex: 1,
+            textAlign: placement === "center" ? "center" : "left",
+          }}
+        >
           <div
             style={{
               fontFamily: "var(--r-heading-font)",
               fontSize: `${theme.baseSize + 12}px`,
               fontWeight: theme.headingWeight,
-              color: theme.primary,
+              color: nameColor,
               lineHeight: 1.1,
               letterSpacing: "-0.01em",
+              wordBreak: "break-word",
             }}
           >
             {p.fullName || "Your Name"}
@@ -92,7 +139,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
               style={{
                 fontFamily: "var(--r-body-font)",
                 fontSize: `${theme.baseSize + 1}px`,
-                color: theme.accent,
+                color: subColor,
                 fontWeight: 500,
               }}
             >
@@ -105,30 +152,112 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
                 display: "flex",
                 flexWrap: "wrap",
                 gap: "4px 14px",
-                color: mutedColor,
+                color: itemColor,
                 fontSize: `${theme.baseSize - 0.5}px`,
                 marginTop: 2,
+                justifyContent: placement === "center" ? "center" : "flex-start",
               }}
             >
               {items.map((it, i) => (
                 <span
                   key={i}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    maxWidth: "100%",
+                    overflowWrap: "anywhere",
+                  }}
                 >
-                  <it.icon size={11} strokeWidth={2} />
-                  <span>{it.text}</span>
+                  <it.icon size={11} strokeWidth={2} style={{ flexShrink: 0 }} />
+                  <span style={{ overflowWrap: "anywhere", minWidth: 0 }}>{it.text}</span>
                 </span>
               ))}
             </div>
           )}
         </div>
       );
+
+      const inner = showAvatar ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection:
+              placement === "center" ? "column" : placement === "right" ? "row-reverse" : "row",
+            alignItems: "center",
+            gap: 16,
+            minWidth: 0,
+          }}
+        >
+          {avatarNode}
+          {textCol}
+        </div>
+      ) : (
+        textCol
+      );
+
+      if (hasHeaderBg) {
+        return (
+          <div
+            style={{
+              background: theme.headerBg,
+              color: theme.headerText || "#fff",
+              padding: "20px 22px",
+              borderRadius: theme.headerRadius ?? theme.radius,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            {inner}
+          </div>
+        );
+      }
+      return inner;
     }
 
     case "contactStack": {
       const p = block.profile;
+      const showAvatar = theme.avatar === "initials";
+      const avatarSize = theme.avatarSize ?? 68;
+      const initials = (p.fullName || "?")
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((s) => s[0]?.toUpperCase() ?? "")
+        .join("");
+      const rowStyle = {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 6,
+        minWidth: 0,
+      } as const;
+      const textStyle = {
+        overflowWrap: "anywhere" as const,
+        minWidth: 0,
+        flex: 1,
+      };
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+          {showAvatar && (
+            <div
+              style={{
+                width: avatarSize,
+                height: avatarSize,
+                borderRadius: "50%",
+                background: theme.avatarBg || theme.accent,
+                color: theme.avatarText || "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "var(--r-heading-font)",
+                fontWeight: theme.headingWeight,
+                fontSize: Math.round(avatarSize * 0.38),
+                marginBottom: 4,
+              }}
+            >
+              {initials}
+            </div>
+          )}
           <div
             style={{
               fontFamily: "var(--r-heading-font)",
@@ -136,6 +265,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
               fontWeight: theme.headingWeight,
               color: isSidebarTinted ? theme.sidebarText : theme.primary,
               lineHeight: 1.15,
+              wordBreak: "break-word",
             }}
           >
             {p.fullName || "Your Name"}
@@ -159,31 +289,39 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
               color: mutedColor,
               fontSize: `${theme.baseSize - 0.5}px`,
               marginTop: 4,
+              minWidth: 0,
             }}
           >
             {p.email && (
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <Mail size={11} /> {p.email}
+              <span style={rowStyle}>
+                <Mail size={11} style={{ flexShrink: 0, marginTop: 3 }} />
+                <span style={textStyle}>{p.email}</span>
               </span>
             )}
             {p.phone && (
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <Phone size={11} /> {p.phone}
+              <span style={rowStyle}>
+                <Phone size={11} style={{ flexShrink: 0, marginTop: 3 }} />
+                <span style={textStyle}>{p.phone}</span>
               </span>
             )}
             {p.location && (
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <MapPin size={11} /> {p.location}
+              <span style={rowStyle}>
+                <MapPin size={11} style={{ flexShrink: 0, marginTop: 3 }} />
+                <span style={textStyle}>{p.location}</span>
               </span>
             )}
             {p.website && (
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <Globe size={11} /> {p.website}
+              <span style={rowStyle}>
+                <Globe size={11} style={{ flexShrink: 0, marginTop: 3 }} />
+                <span style={textStyle}>{p.website}</span>
               </span>
             )}
             {p.links.map((l, i) => (
-              <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <LinkIcon size={11} /> {l.label}: {l.url}
+              <span key={i} style={rowStyle}>
+                <LinkIcon size={11} style={{ flexShrink: 0, marginTop: 3 }} />
+                <span style={textStyle}>
+                  {l.label}: {l.url}
+                </span>
               </span>
             ))}
           </div>
