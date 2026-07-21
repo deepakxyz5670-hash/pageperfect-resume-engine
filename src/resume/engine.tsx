@@ -408,7 +408,7 @@ function paginateRegion(
     }
 
     // Try split
-    const split = trySplitEntry(gm, used + sectionGap, available, spacing);
+    const split = trySplitEntry(gm, used + sectionGap, available);
     if (split) {
       currentPage().push({
         block: split.first,
@@ -447,7 +447,6 @@ function trySplitEntry(
   gm: GroupMeasure,
   usedBefore: number,
   available: number,
-  spacing: Spacing,
 ): { first: Block; firstHeight: number; rest: Block; restHeight: number } | null {
   const group = gm.group;
   if (!group.splittable) return null;
