@@ -65,8 +65,56 @@ export function BlockView({ block, ctx }: { block: Block; ctx: Ctx }) {
   const mutedColor = isSidebarTinted ? theme.sidebarText : theme.muted;
 
   switch (block.kind) {
-    case "sectionTitle":
+    case "sectionTitle": {
+      if (theme.sectionTitleStyle === "timeline" && theme.timelineBar) {
+        const bar = theme.timelineBar;
+        const labelWidth = bar.labelWidth ?? 96;
+        const labelGap = bar.labelGap ?? 20;
+        const barWidth = bar.width ?? 2;
+        // Offset from the main region's left edge (= pageMarginLeft) back
+        // to the bar. Bullet centers on the bar; label sits to the left.
+        const barOffsetFromMain = spacing.pageMarginLeft - bar.x;
+        return (
+          <div style={{ position: "relative", minHeight: theme.baseSize + 6 }}>
+            {/* Label to the left of the bar */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: -(barOffsetFromMain + labelGap),
+                width: labelWidth,
+                textAlign: "right",
+                fontFamily: "var(--r-heading-font)",
+                fontWeight: theme.headingWeight,
+                color: theme.primary,
+                fontSize: `${theme.baseSize + 0.5}px`,
+                letterSpacing:
+                  theme.sectionTitleTransform === "uppercase" ? "0.1em" : "normal",
+                textTransform: theme.sectionTitleTransform,
+                lineHeight: 1.2,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {block.text}
+            </div>
+            {/* Bullet centered on the vertical bar */}
+            <div
+              style={{
+                position: "absolute",
+                top: 2,
+                left: -(barOffsetFromMain + 5) + barWidth / 2,
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: bar.color ?? theme.accent,
+                boxShadow: "0 0 0 3px #fff",
+              }}
+            />
+          </div>
+        );
+      }
       return <h2 style={sectionTitleStyle(theme, variant)}>{block.text}</h2>;
+    }
 
     case "profileHeader": {
       const p = block.profile;
