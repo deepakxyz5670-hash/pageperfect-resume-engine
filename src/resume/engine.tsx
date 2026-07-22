@@ -367,7 +367,8 @@ function buildMeasureRequests(
 
 function paginateRegion(
   rm: RegionMeasure,
-  available: number,
+  firstAvailable: number,
+  laterAvailable: number,
   spacing: Spacing,
 ): PageColumn[] {
   if (!rm.groups.length) return [];
@@ -377,6 +378,8 @@ function paginateRegion(
   let prevSection: string | null = null;
 
   const currentPage = () => pages[pages.length - 1];
+  const availableNow = () =>
+    pages.length === 1 ? firstAvailable : laterAvailable;
 
   const placeGroupOnCurrent = (gm: GroupMeasure, sectionGap: number) => {
     gm.group.blocks.forEach((b, i) => {
@@ -393,7 +396,24 @@ function paginateRegion(
     prevSection = null;
   };
 
-  rm.groups.forEach((gm) => {
+  const isTitleOnly = (gm: GroupMeasure) =>
+    gm.group.blocks.length === 1 && gm.group.blocks[0].kind === "sectionTitle";
+
+  // Minimum height to place a meaningful chunk of the next group.
+  // Splittable entries: header + 1 bullet. Otherwise the first block.
+  const minPlaceable = (gm: GroupMeasure) => {
+    if (
+      gm.group.splittable &&
+      gm.headerHeightIfSplit !== undefined &&
+      gm.perBulletHeight !== undefined
+    ) {
+      return gm.headerHeightIfSplit + gm.perBulletHeight;
+    }
+    return gm.blockHeights[0] ?? gm.totalHeight;
+  };
+
+  for (let gi = 0; gi < rm.groups.length; gi++) {
+    const gm = rm.groups[gi];
     const sectionGap =
       prevSection === null
         ? 0
@@ -401,13 +421,27 @@ function paginateRegion(
         ? spacing.entryGap
         : spacing.sectionGap;
     const total = gm.totalHeight + sectionGap;
+    const available = availableNow();
 
     if (used + total <= available) {
+      // Orphan section-title guard: if this group is only a title, verify
+      // that the next group can also start on this page. If not, defer the
+      // title to the next page so it stays with its content.
+      if (isTitleOnly(gm) && gi + 1 < rm.groups.length) {
+        const next = rm.groups[gi + 1];
+        const nextGap = spacing.entryGap; // same section as its title
+        const need = used + total + nextGap + minPlaceable(next);
+        if (need > available && currentPage().length > 0) {
+          newPage();
+          gi--; // re-process this title on the fresh page
+          continue;
+        }
+      }
       placeGroupOnCurrent(gm, sectionGap);
-      return;
+      continue;
     }
 
-    // Try split
+    // Try to split a long entry across pages.
     const split = trySplitEntry(gm, used + sectionGap, available);
     if (split) {
       currentPage().push({
@@ -424,19 +458,34 @@ function paginateRegion(
       });
       used = split.restHeight;
       prevSection = gm.group.section;
-      return;
+      continue;
     }
 
-    // Move to next page
+    // Doesn't fit and can't split.
     if (currentPage().length === 0) {
-      // Empty page and still doesn't fit -> place anyway (overflow hidden)
+      // Fresh page and still doesn't fit — place anyway.
       placeGroupOnCurrent(gm, 0);
       newPage();
-      return;
+      continue;
     }
+
+    // If the previous placed block on this page is an (orphan) section title,
+    // carry it to the next page together with this group.
+    const prev = currentPage()[currentPage().length - 1];
+    if (prev && prev.block.kind === "sectionTitle") {
+      currentPage().pop();
+      used -= prev.topGap + prev.height;
+      newPage();
+      currentPage().push({ block: prev.block, topGap: 0, height: prev.height });
+      used = prev.height;
+      prevSection = gm.group.section;
+      placeGroupOnCurrent(gm, spacing.entryGap);
+      continue;
+    }
+
     newPage();
     placeGroupOnCurrent(gm, 0);
-  });
+  }
 
   if (currentPage().length === 0) pages.pop();
 
