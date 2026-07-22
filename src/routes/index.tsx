@@ -4,6 +4,7 @@ import { Printer, FileJson, FileDown, Upload, RotateCcw } from "lucide-react";
 import { ResumeDocument, PAGE_HEIGHT_PX, PAGE_WIDTH_PX } from "@/resume/engine";
 import { normalizeResume, sampleResume, type Resume } from "@/resume/schema";
 import { templates, getTemplate } from "@/resume/templates";
+import { TemplateThumb } from "@/resume/TemplateThumb";
 
 export const Route = createFileRoute("/")({
   head: () => ({
