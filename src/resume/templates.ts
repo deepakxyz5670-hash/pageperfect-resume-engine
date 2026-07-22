@@ -38,7 +38,7 @@ export type Theme = {
   baseSize: number; // px
   headingWeight: number;
   sectionTitleTransform: "uppercase" | "none";
-  sectionTitleStyle: "underline" | "bar" | "plain" | "chip";
+  sectionTitleStyle: "underline" | "bar" | "plain" | "chip" | "timeline";
   bulletStyle: "dot" | "dash" | "square";
   radius: number; // px
   accentBar: boolean;
@@ -51,6 +51,21 @@ export type Theme = {
   avatarSize?: number;
   avatarBg?: string;
   avatarText?: string;
+  // Optional page-level decorations
+  timelineBar?: {
+    x: number; // distance from page left edge (px)
+    color?: string; // defaults to accent
+    width?: number; // defaults to 2
+    labelWidth?: number; // reserved space for the label to the left of the bar
+    labelGap?: number; // gap between label and bar
+  };
+  bookmark?: {
+    position: "topLeft" | "topRight";
+    color: string;
+    width: number;
+    height: number;
+    accent?: string; // small stripe color
+  };
 };
 
 export type Spacing = {
