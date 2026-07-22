@@ -75,10 +75,15 @@ export function resolveRegions(resume: Resume, template: Template) {
   const pageW = PAGE_WIDTH_PX;
   const pageH = PAGE_HEIGHT_PX;
 
+  // Enforce a minimum top margin so content on subsequent pages never sits
+  // flush against the top edge of the sheet.
+  const MIN_PAGE_MARGIN_TOP = 40;
+  const effectiveTop = Math.max(s.pageMarginTop, MIN_PAGE_MARGIN_TOP);
+
   const contentX = s.pageMarginLeft;
-  const contentY = s.pageMarginTop;
+  const contentY = effectiveTop;
   const contentW = pageW - s.pageMarginLeft - s.pageMarginRight;
-  const contentH = pageH - s.pageMarginTop - s.pageMarginBottom;
+  const contentH = pageH - effectiveTop - s.pageMarginBottom;
 
   const headerGroups = buildGroupsFor(resume, template.headerSections, "header");
   const mainGroups = buildGroupsFor(resume, template.mainSections, "main");
@@ -784,6 +789,49 @@ function PageView({
 
   return (
     <div className="resume-page" style={pageStyle}>
+      {/* Page-level decorations (vertical timeline bar, bookmark ribbon) */}
+      {t.timelineBar && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: t.timelineBar.x,
+            top: 0,
+            bottom: 0,
+            width: t.timelineBar.width ?? 2,
+            background: t.timelineBar.color ?? t.accent,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      {t.bookmark && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 0,
+            [t.bookmark.position === "topLeft" ? "left" : "right"]: 20,
+            width: t.bookmark.width,
+            height: t.bookmark.height,
+            background: t.bookmark.color,
+            clipPath: `polygon(0 0, 100% 0, 100% 100%, 50% 85%, 0 100%)`,
+            pointerEvents: "none",
+          } as CSSProperties}
+        >
+          {t.bookmark.accent && (
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 14,
+                height: 4,
+                background: t.bookmark.accent,
+              }}
+            />
+          )}
+        </div>
+      )}
       {regions.map((r) => {
         const isHeader = r.key === "header";
         const isFooter = r.key === "footer";
@@ -808,6 +856,10 @@ function PageView({
             ? r.backgroundColor
             : undefined;
 
+        // When a page-level timeline bar is present, allow section-title
+        // labels to protrude into the left gutter without being clipped.
+        const overflow = t.timelineBar && r.variant !== "sidebar" ? "visible" : "hidden";
+
         return (
           <div
             key={r.key}
@@ -825,7 +877,7 @@ function PageView({
               boxSizing: "border-box",
               background: bg,
               color: r.variant === "sidebar" && bg ? t.sidebarText : undefined,
-              overflow: "hidden",
+              overflow,
             }}
           >
             {isBody
