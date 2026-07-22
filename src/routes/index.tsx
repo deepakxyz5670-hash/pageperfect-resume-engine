@@ -112,76 +112,97 @@ function Builder() {
   return (
     <div className="min-h-screen bg-neutral-100 text-neutral-900">
       {/* Toolbar */}
-      <header className="no-print sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-white px-4 py-3">
-        <div className="flex items-center gap-2 pr-3">
-          <div className="h-7 w-7 rounded-md bg-neutral-900 text-white grid place-items-center text-xs font-bold">R</div>
-          <div className="font-semibold tracking-tight">Resume Studio</div>
-        </div>
-        <div className="mx-2 h-6 w-px bg-neutral-200" />
-        <label className="text-xs text-neutral-500">Template</label>
-        <select
-          value={templateId}
-          onChange={(e) => setTemplateId(e.target.value)}
-          className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm"
-        >
-          {templates.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-        <div className="mx-2 h-6 w-px bg-neutral-200" />
-        <label className="text-xs text-neutral-500">Zoom</label>
-        <input
-          type="range"
-          min={0.4}
-          max={1.2}
-          step={0.05}
-          value={zoom}
-          onChange={(e) => setZoom(Number(e.target.value))}
-          className="w-28"
-        />
-        <span className="w-10 text-xs tabular-nums text-neutral-500">{Math.round(zoom * 100)}%</span>
-
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-neutral-500">
-            {pageCount} page{pageCount === 1 ? "" : "s"}
-          </span>
+      <header className="no-print sticky top-0 z-20 flex flex-col gap-2 border-b border-neutral-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 pr-3">
+            <div className="h-7 w-7 rounded-md bg-neutral-900 text-white grid place-items-center text-xs font-bold">R</div>
+            <div className="font-semibold tracking-tight">Resume Studio</div>
+          </div>
+          <div className="mx-2 h-6 w-px bg-neutral-200" />
+          <label className="text-xs text-neutral-500">Template</label>
+          <select
+            value={templateId}
+            onChange={(e) => setTemplateId(e.target.value)}
+            className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm max-w-[220px]"
+          >
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <div className="mx-2 h-6 w-px bg-neutral-200" />
+          <label className="text-xs text-neutral-500">Zoom</label>
           <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
-              e.target.value = "";
-            }}
+            type="range"
+            min={0.4}
+            max={1.2}
+            step={0.05}
+            value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+            className="w-28"
           />
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
-          >
-            <Upload size={14} /> Import JSON
-          </button>
-          <button
-            onClick={exportJson}
-            className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
-          >
-            <FileJson size={14} /> Export JSON
-          </button>
-          <button
-            onClick={reset}
-            className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
-          >
-            <RotateCcw size={14} /> Reset
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800"
-          >
-            <Printer size={14} /> Print / PDF
-          </button>
+          <span className="w-10 text-xs tabular-nums text-neutral-500">{Math.round(zoom * 100)}%</span>
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-neutral-500">
+              {pageCount} page{pageCount === 1 ? "" : "s"}
+            </span>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(f);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
+            >
+              <Upload size={14} /> Import JSON
+            </button>
+            <button
+              onClick={exportJson}
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
+            >
+              <FileJson size={14} /> Export JSON
+            </button>
+            <button
+              onClick={reset}
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
+            >
+              <RotateCcw size={14} /> Reset
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800"
+            >
+              <Printer size={14} /> Print / PDF
+            </button>
+          </div>
+        </div>
+        {/* Template thumbnail slider */}
+        <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1 -mx-1 px-1 scrollbar-thin">
+          {templates.map((t) => (
+            <div key={t.id} className="flex flex-col items-center gap-1 flex-shrink-0">
+              <TemplateThumb
+                template={t}
+                selected={t.id === templateId}
+                onClick={() => setTemplateId(t.id)}
+              />
+              <div
+                className={`text-[10px] leading-tight max-w-[120px] truncate ${
+                  t.id === templateId ? "text-neutral-900 font-medium" : "text-neutral-500"
+                }`}
+              >
+                {t.name}
+              </div>
+            </div>
+          ))}
         </div>
       </header>
 
