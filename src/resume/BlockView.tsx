@@ -45,6 +45,10 @@ function sectionTitleStyle(theme: Theme, variant: Ctx["variant"]): CSSProperties
       borderRadius: theme.radius,
     };
   }
+  if (theme.sectionTitleStyle === "timeline") {
+    // Rendered specially in the sectionTitle case below.
+    return { ...base, padding: 0 };
+  }
   return base;
 }
 
