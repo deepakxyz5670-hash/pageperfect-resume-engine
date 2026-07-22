@@ -610,18 +610,24 @@ export function ResumeDocument({
     const out: Record<string, PageColumn[]> = {};
     if (!allMeasured) return out;
     bodyRMs.forEach((rm) => {
-      let available: number;
+      let firstAvailable: number;
+      let laterAvailable: number;
       if (rm.region.fullPageHeight) {
-        available = PAGE_HEIGHT_PX - rm.region.padding * 2;
+        firstAvailable = PAGE_HEIGHT_PX - rm.region.padding * 2;
+        laterAvailable = firstAvailable;
       } else {
-        available =
-          rm.region.height -
-          (headerHeight > 0 ? headerHeight + template.spacing.sectionGap : 0) -
-          (footerHeight > 0 ? footerHeight + template.spacing.sectionGap : 0);
+        // Header renders on page 1 only; later pages regain that space.
+        const footerDeduction =
+          footerHeight > 0 ? footerHeight + template.spacing.sectionGap : 0;
+        const headerDeduction =
+          headerHeight > 0 ? headerHeight + template.spacing.sectionGap : 0;
+        firstAvailable = rm.region.height - headerDeduction - footerDeduction;
+        laterAvailable = rm.region.height - footerDeduction;
       }
       out[rm.region.key] = paginateRegion(
         rm,
-        Math.max(0, available - LAYOUT_SAFETY_PX),
+        Math.max(0, firstAvailable - LAYOUT_SAFETY_PX),
+        Math.max(0, laterAvailable - LAYOUT_SAFETY_PX),
         template.spacing,
       );
     });
