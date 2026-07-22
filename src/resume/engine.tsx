@@ -75,10 +75,15 @@ export function resolveRegions(resume: Resume, template: Template) {
   const pageW = PAGE_WIDTH_PX;
   const pageH = PAGE_HEIGHT_PX;
 
+  // Enforce a minimum top margin so content on subsequent pages never sits
+  // flush against the top edge of the sheet.
+  const MIN_PAGE_MARGIN_TOP = 40;
+  const effectiveTop = Math.max(s.pageMarginTop, MIN_PAGE_MARGIN_TOP);
+
   const contentX = s.pageMarginLeft;
-  const contentY = s.pageMarginTop;
+  const contentY = effectiveTop;
   const contentW = pageW - s.pageMarginLeft - s.pageMarginRight;
-  const contentH = pageH - s.pageMarginTop - s.pageMarginBottom;
+  const contentH = pageH - effectiveTop - s.pageMarginBottom;
 
   const headerGroups = buildGroupsFor(resume, template.headerSections, "header");
   const mainGroups = buildGroupsFor(resume, template.mainSections, "main");
