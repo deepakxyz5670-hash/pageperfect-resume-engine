@@ -206,7 +206,7 @@ function Builder() {
         </div>
       </header>
 
-      <div className="flex" style={{ height: "calc(100vh - 57px)" }}>
+      <div className="flex flex-1" style={{ minHeight: "calc(100vh - 220px)" }}>
         {/* Sidebar: JSON editor */}
         <aside className="no-print flex w-[380px] shrink-0 flex-col border-r border-neutral-200 bg-white">
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2">
