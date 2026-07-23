@@ -77,13 +77,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Resume Studio — print-accurate resume builder" },
-      { name: "description", content: "Import JSON, pick a template, and print A4-perfect resumes. Preview matches print exactly." },
+      { title: "Resume Builder — print-accurate document engine" },
+      { name: "description", content: "Import JSON, pick a template, preview A4 pages, and print or export to PDF. Preview matches print exactly." },
       { name: "author", content: "Resume Studio" },
-      { property: "og:title", content: "Resume Studio" },
-      { property: "og:description", content: "A print-accurate resume builder with measurement-driven pagination and multiple templates." },
+      { property: "og:title", content: "Resume Builder — print-accurate document engine" },
+      { property: "og:description", content: "Import JSON, pick a template, preview A4 pages, and print or export to PDF. Preview matches print exactly." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Resume Builder — print-accurate document engine" },
+      { name: "twitter:description", content: "Import JSON, pick a template, preview A4 pages, and print or export to PDF. Preview matches print exactly." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/97fdb41c-830e-4ba9-b9d1-f605f49eee47/id-preview-06f9f58e--a6df072d-5ad3-47a6-842f-ca863474e7e1.lovable.app-1784780960913.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/97fdb41c-830e-4ba9-b9d1-f605f49eee47/id-preview-06f9f58e--a6df072d-5ad3-47a6-842f-ca863474e7e1.lovable.app-1784780960913.png" },
     ],
     links: [
       {

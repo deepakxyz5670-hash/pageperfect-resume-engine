@@ -15,11 +15,11 @@ export const Route = createFileRoute("/")({
         content:
           "Import JSON, pick a template, preview A4 pages, and print or export to PDF. Preview matches print exactly.",
       },
-      { property: "og:title", content: "Resume Builder" },
+      { property: "og:title", content: "Resume Builder — print-accurate document engine" },
       {
         property: "og:description",
         content:
-          "A print-accurate resume builder with measurement-driven pagination and multiple templates.",
+          "Import JSON, pick a template, preview A4 pages, and print or export to PDF. Preview matches print exactly.",
       },
       { property: "og:type", content: "website" },
     ],
