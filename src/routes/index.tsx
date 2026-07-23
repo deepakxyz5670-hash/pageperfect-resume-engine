@@ -103,56 +103,51 @@ function Builder() {
     URL.revokeObjectURL(url);
   };
 
-  const exportWord = () => {
+  const exportWord = async () => {
     const root = document.getElementById("print-root");
     if (!root) return;
-    // Collect each page's rendered HTML — preserves inline styles so Word can
-    // reproduce colors, fonts, sidebars, and headers.
     const pages = Array.from(root.querySelectorAll<HTMLElement>(".resume-page"));
     if (!pages.length) return;
+
     const pageHtml = pages
       .map((p, i) => {
-        const inner = p.outerHTML;
         const br = i < pages.length - 1
           ? '<br clear="all" style="mso-special-character:line-break;page-break-before:always"/>'
           : "";
-        return inner + br;
+        return p.outerHTML + br;
       })
       .join("");
 
-    // Word HTML wrapper with @page A4 (0 margins — our .resume-page owns
-    // its own padding, matching the on-screen preview).
-    const html = `<?xml version="1.0" encoding="UTF-8"?>
-<html xmlns:o="urn:schemas-microsoft-com:office:office"
-      xmlns:w="urn:schemas-microsoft-com:office:word"
-      xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="utf-8"/>
-<title>${(resume.profile.fullName || "Resume").replace(/</g, "&lt;")}</title>
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${(resume.profile.fullName || "Resume").replace(/</g, "&lt;")}</title>
 <style>
-  @page WordSection1 { size: 210mm 297mm; margin: 0mm; mso-page-orientation: portrait; }
-  div.WordSection1 { page: WordSection1; }
   body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
   .resume-page { box-shadow: none !important; border: 0 !important; margin: 0 !important; }
   * { box-sizing: border-box; }
-</style>
-</head>
-<body>
-<div class="WordSection1">${pageHtml}</div>
-</body>
-</html>`;
+</style></head><body>${pageHtml}</body></html>`;
 
-    const blob = new Blob(["\ufeff", html], {
-      type: "application/msword;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(resume.profile.fullName || "resume").replace(/\s+/g, "_")}.doc`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const fileName = `${(resume.profile.fullName || "resume").replace(/\s+/g, "_")}.docx`;
+
+    try {
+      const mod = await import("html-to-docx");
+      const htmlToDocx = (mod as any).default ?? (mod as any);
+      const blob: Blob = await htmlToDocx(html, null, {
+        orientation: "portrait",
+        pageSize: { width: 11906, height: 16838 }, // A4 in twips
+        margins: { top: 0, right: 0, bottom: 0, left: 0, header: 0, footer: 0 },
+        table: { row: { cantSplit: true } },
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("DOCX export failed", err);
+      alert("Failed to export DOCX. Please try again.");
+    }
   };
+
 
 
 
