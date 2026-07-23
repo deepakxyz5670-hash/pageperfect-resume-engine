@@ -152,6 +152,9 @@ function Builder() {
     a.download = `${(resume.profile.fullName || "resume").replace(/\s+/g, "_")}.doc`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+
 
 
   const reset = () => {
