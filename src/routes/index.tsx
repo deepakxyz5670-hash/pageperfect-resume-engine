@@ -226,6 +226,14 @@ function Builder() {
               <FileJson size={14} /> Export JSON
             </button>
             <button
+              onClick={exportWord}
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
+              title="Export as Word (.doc) — matches the preview design"
+            >
+              <FileText size={14} /> Export Word
+            </button>
+
+            <button
               onClick={reset}
               className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
             >
