@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Printer, FileJson, FileDown, Upload, RotateCcw } from "lucide-react";
+import { Printer, FileJson, FileDown, Upload, RotateCcw, FileText } from "lucide-react";
 import { ResumeDocument, PAGE_HEIGHT_PX, PAGE_WIDTH_PX } from "@/resume/engine";
 import { normalizeResume, sampleResume, type Resume } from "@/resume/schema";
 import { templates, getTemplate } from "@/resume/templates";
