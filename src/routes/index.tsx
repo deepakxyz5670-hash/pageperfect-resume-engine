@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Printer, FileJson, FileDown, Upload, RotateCcw } from "lucide-react";
+import { Printer, FileJson, FileDown, Upload, RotateCcw, FileText } from "lucide-react";
 import { ResumeDocument, PAGE_HEIGHT_PX, PAGE_WIDTH_PX } from "@/resume/engine";
 import { normalizeResume, sampleResume, type Resume } from "@/resume/schema";
 import { templates, getTemplate } from "@/resume/templates";
@@ -103,6 +103,60 @@ function Builder() {
     URL.revokeObjectURL(url);
   };
 
+  const exportWord = () => {
+    const root = document.getElementById("print-root");
+    if (!root) return;
+    // Collect each page's rendered HTML — preserves inline styles so Word can
+    // reproduce colors, fonts, sidebars, and headers.
+    const pages = Array.from(root.querySelectorAll<HTMLElement>(".resume-page"));
+    if (!pages.length) return;
+    const pageHtml = pages
+      .map((p, i) => {
+        const inner = p.outerHTML;
+        const br = i < pages.length - 1
+          ? '<br clear="all" style="mso-special-character:line-break;page-break-before:always"/>'
+          : "";
+        return inner + br;
+      })
+      .join("");
+
+    // Word HTML wrapper with @page A4 (0 margins — our .resume-page owns
+    // its own padding, matching the on-screen preview).
+    const html = `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8"/>
+<title>${(resume.profile.fullName || "Resume").replace(/</g, "&lt;")}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+  @page WordSection1 { size: 210mm 297mm; margin: 0mm; mso-page-orientation: portrait; }
+  div.WordSection1 { page: WordSection1; }
+  body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  .resume-page { box-shadow: none !important; border: 0 !important; margin: 0 !important; }
+  * { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div class="WordSection1">${pageHtml}</div>
+</body>
+</html>`;
+
+    const blob = new Blob(["\ufeff", html], {
+      type: "application/msword;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(resume.profile.fullName || "resume").replace(/\s+/g, "_")}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+
+
+
   const reset = () => {
     setResume(sampleResume);
     setJsonText(JSON.stringify(sampleResume, null, 2));
@@ -171,6 +225,14 @@ function Builder() {
             >
               <FileJson size={14} /> Export JSON
             </button>
+            <button
+              onClick={exportWord}
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
+              title="Export as Word (.doc) — matches the preview design"
+            >
+              <FileText size={14} /> Export Word
+            </button>
+
             <button
               onClick={reset}
               className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
