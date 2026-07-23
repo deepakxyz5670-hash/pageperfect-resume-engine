@@ -128,14 +128,12 @@ function Builder() {
     const fileName = `${(resume.profile.fullName || "resume").replace(/\s+/g, "_")}.docx`;
 
     try {
-      const mod = await import("html-to-docx");
-      const htmlToDocx = (mod as any).default ?? (mod as any);
-      const blob: Blob = await htmlToDocx(html, null, {
+      const { asBlob } = await import("html-docx-js-typescript");
+      const result = await asBlob(html, {
         orientation: "portrait",
-        pageSize: { width: 11906, height: 16838 }, // A4 in twips
-        margins: { top: 0, right: 0, bottom: 0, left: 0, header: 0, footer: 0 },
-        table: { row: { cantSplit: true } },
+        margins: { top: 0, right: 0, bottom: 0, left: 0, header: 0, footer: 0, gutter: 0 },
       });
+      const blob = result instanceof Blob ? result : new Blob([result as any], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -146,6 +144,7 @@ function Builder() {
       console.error("DOCX export failed", err);
       alert("Failed to export DOCX. Please try again.");
     }
+
   };
 
 
