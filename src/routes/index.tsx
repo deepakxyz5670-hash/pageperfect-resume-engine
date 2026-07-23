@@ -103,6 +103,57 @@ function Builder() {
     URL.revokeObjectURL(url);
   };
 
+  const exportWord = () => {
+    const root = document.getElementById("print-root");
+    if (!root) return;
+    // Collect each page's rendered HTML — preserves inline styles so Word can
+    // reproduce colors, fonts, sidebars, and headers.
+    const pages = Array.from(root.querySelectorAll<HTMLElement>(".resume-page"));
+    if (!pages.length) return;
+    const pageHtml = pages
+      .map((p, i) => {
+        const inner = p.outerHTML;
+        const br = i < pages.length - 1
+          ? '<br clear="all" style="mso-special-character:line-break;page-break-before:always"/>'
+          : "";
+        return inner + br;
+      })
+      .join("");
+
+    // Word HTML wrapper with @page A4 (0 margins — our .resume-page owns
+    // its own padding, matching the on-screen preview).
+    const html = `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8"/>
+<title>${(resume.profile.fullName || "Resume").replace(/</g, "&lt;")}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+  @page WordSection1 { size: 210mm 297mm; margin: 0mm; mso-page-orientation: portrait; }
+  div.WordSection1 { page: WordSection1; }
+  body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  .resume-page { box-shadow: none !important; border: 0 !important; margin: 0 !important; }
+  * { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div class="WordSection1">${pageHtml}</div>
+</body>
+</html>`;
+
+    const blob = new Blob(["\ufeff", html], {
+      type: "application/msword;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(resume.profile.fullName || "resume").replace(/\s+/g, "_")}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+
   const reset = () => {
     setResume(sampleResume);
     setJsonText(JSON.stringify(sampleResume, null, 2));
